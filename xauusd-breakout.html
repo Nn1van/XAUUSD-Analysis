@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>XAUUSD — Multi-Timeframe Breakout</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f0;
+      color: #1a1a18;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .page { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #6b6b65; margin-bottom: 1.5rem; }
+    .price-bar {
+      background: #ebebE4;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .price-main { font-size: 28px; font-weight: 500; }
+    .price-label { font-size: 12px; color: #6b6b65; margin-bottom: 2px; }
+    .price-change { font-size: 14px; font-weight: 500; }
+    .change-pos { color: #27500A; }
+    .change-neg { color: #791F1F; }
+    .change-neu { color: #6b6b65; }
+    .tf-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 500px) {
+      .tf-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    .tf-card {
+      background: #fff;
+      border: 0.5px solid rgba(0,0,0,0.12);
+      border-radius: 12px;
+      padding: 0.85rem 0.6rem;
+      text-align: center;
+    }
+    .tf-label {
+      font-size: 11px;
+      color: #6b6b65;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .tf-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      white-space: nowrap;
+    }
+    .badge-solid-buy  { background: #EAF3DE; color: #27500A; }
+    .badge-weak-buy   { background: #E1F5EE; color: #085041; }
+    .badge-solid-sell { background: #FCEBEB; color: #791F1F; }
+    .badge-weak-sell  { background: #FAECE7; color: #4A1B0C; }
+    .badge-none       { background: #F1EFE8; color: #444441; }
+    .badge-loading    { background: #ebebE4; color: #6b6b65; }
+    .tf-zone { font-size: 10px; color: #9b9b93; margin-top: 2px; line-height: 1.5; }
+    .tf-next { font-size: 10px; color: #9b9b93; margin-top: 5px; }
+    .summary-section { border-top: 0.5px solid rgba(0,0,0,0.1); padding-top: 1rem; }
+    .summary-title { font-size: 13px; color: #6b6b65; margin-bottom: 10px; }
+    .summary-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .summary-tf { font-size: 13px; font-weight: 500; min-width: 52px; }
+    .summary-bar-wrap { flex: 1; height: 6px; background: #ebebE4; border-radius: 3px; overflow: hidden; }
+    .summary-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+    .bar-solid-buy  { background: #639922; }
+    .bar-weak-buy   { background: #1D9E75; }
+    .bar-solid-sell { background: #E24B4A; }
+    .bar-weak-sell  { background: #D85A30; }
+    .bar-none       { background: #888780; }
+    .summary-tag { font-size: 11px; font-weight: 500; min-width: 80px; text-align: right; white-space: nowrap; }
+    .tag-solid-buy  { color: #27500A; }
+    .tag-weak-buy   { color: #085041; }
+    .tag-solid-sell { color: #791F1F; }
+    .tag-weak-sell  { color: #4A1B0C; }
+    .tag-none       { color: #444441; }
+    .legend {
+      margin-top: 2rem;
+      padding: 1rem 1.25rem;
+      background: #fff;
+      border: 0.5px solid rgba(0,0,0,0.12);
+      border-radius: 12px;
+      font-size: 12px;
+      color: #6b6b65;
+      line-height: 1.8;
+    }
+    .legend span { font-weight: 500; }
+    .legend .buy  { color: #27500A; }
+    .legend .sell { color: #791F1F; }
+    .legend .weak { color: #085041; }
+    .legend .wsell { color: #4A1B0C; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>XAUUSD — Multi-Timeframe Breakout</h1>
+  <div class="subtitle" id="last-updated">Fetching data...</div>
+
+  <div class="price-bar">
+    <div>
+      <div class="price-label">Current price</div>
+      <div class="price-main" id="current-price">—</div>
+    </div>
+    <div>
+      <div class="price-label">24h change</div>
+      <div class="price-change change-neu" id="price-change">—</div>
+    </div>
+    <div>
+      <div class="price-label">24h high</div>
+      <div id="day-high" style="font-size:14px;font-weight:500;">—</div>
+    </div>
+    <div>
+      <div class="price-label">24h low</div>
+      <div id="day-low" style="font-size:14px;font-weight:500;">—</div>
+    </div>
+  </div>
+
+  <div class="tf-grid" id="tf-grid">
+    <div class="tf-card"><div class="tf-label">Monthly</div><div class="tf-badge badge-loading">Loading…</div></div>
+    <div class="tf-card"><div class="tf-label">Weekly</div><div class="tf-badge badge-loading">Loading…</div></div>
+    <div class="tf-card"><div class="tf-label">Daily</div><div class="tf-badge badge-loading">Loading…</div></div>
+    <div class="tf-card"><div class="tf-label">H4</div><div class="tf-badge badge-loading">Loading…</div></div>
+    <div class="tf-card"><div class="tf-label">H1</div><div class="tf-badge badge-loading">Loading…</div></div>
+  </div>
+
+  <div class="summary-section" id="summary-section"></div>
+
+  <div class="legend">
+    <span class="buy">Solid BO Buy</span> — close fully above BO Buy zone (bearish swing high: top=close, bottom=low)<br>
+    <span class="weak">Weak BO Buy</span> — close inside BO Buy zone<br>
+    <span class="sell">Solid BO Sell</span> — close fully below BO Sell zone (bullish swing low: top=high, bottom=close)<br>
+    <span class="wsell">Weak BO Sell</span> — close inside BO Sell zone<br>
+    <span>No BO</span> — no nearby SNR zone within 1.5% of current price
+  </div>
+</div>
+
+<script>
+const TFS = [
+  { label: 'Monthly', id: 'monthly', interval: '1M', limit: 30, refreshMs: 30*24*60*60*1000 },
+  { label: 'Weekly',  id: 'weekly',  interval: '1W', limit: 30, refreshMs: 7*24*60*60*1000 },
+  { label: 'Daily',   id: 'daily',   interval: '1D', limit: 30, refreshMs: 24*60*60*1000 },
+  { label: 'H4',      id: 'h4',      interval: '4h', limit: 30, refreshMs: 4*60*60*1000 },
+  { label: 'H1',      id: 'h1',      interval: '1h', limit: 30, refreshMs: 60*60*1000 },
+];
+
+const PROXIMITY = 0.015;
+let results = {};
+let nextRefresh = {};
+
+async function fetchCandles(interval, limit) {
+  const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=XAUUSDT&interval=${interval}&limit=${limit}`);
+  if (!res.ok) throw new Error('API error');
+  return res.json();
+}
+
+async function fetchTicker() {
+  const res = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=XAUUSDT');
+  if (!res.ok) throw new Error();
+  return res.json();
+}
+
+function isBullish(c) { return parseFloat(c[4]) >= parseFloat(c[1]); }
+function isBearish(c) { return parseFloat(c[4]) <  parseFloat(c[1]); }
+
+function isNearPrice(zoneTop, zoneBottom, price, pct) {
+  const mid = (zoneTop + zoneBottom) / 2;
+  return Math.abs(mid - price) / price <= pct;
+}
+
+function findZones(candles, curClose, lookback) {
+  const buyZones  = [];
+  const sellZones = [];
+
+  for (let i = lookback; i < candles.length - lookback; i++) {
+    const c  = candles[i];
+    const hi = parseFloat(c[2]);
+    const lo = parseFloat(c[3]);
+    const cl = parseFloat(c[4]);
+
+    let isSwingHigh = true;
+    let isSwingLow  = true;
+
+    for (let j = i - lookback; j <= i + lookback; j++) {
+      if (j === i) continue;
+      if (parseFloat(candles[j][2]) > hi) isSwingHigh = false;
+      if (parseFloat(candles[j][3]) < lo) isSwingLow  = false;
+    }
+
+    if (isSwingHigh && isBearish(c)) {
+      const zone = { top: cl, bottom: lo };
+      if (isNearPrice(zone.top, zone.bottom, curClose, PROXIMITY)) buyZones.push(zone);
+    }
+
+    if (isSwingLow && isBullish(c)) {
+      const zone = { top: hi, bottom: cl };
+      if (isNearPrice(zone.top, zone.bottom, curClose, PROXIMITY)) sellZones.push(zone);
+    }
+  }
+
+  const closest = (zones) => zones.sort((a, b) =>
+    Math.abs(((a.top+a.bottom)/2) - curClose) - Math.abs(((b.top+b.bottom)/2) - curClose)
+  )[0] || null;
+
+  return { buyZone: closest(buyZones), sellZone: closest(sellZones) };
+}
+
+function detectBreakout(candles) {
+  if (!candles || candles.length < 10) return { signal: 'none', zone: null };
+  const closed   = candles.slice(0, -1);
+  const current  = closed[closed.length - 1];
+  const curClose = parseFloat(current[4]);
+  const { buyZone, sellZone } = findZones(closed.slice(0, -1), curClose, 2);
+
+  if (buyZone) {
+    if (curClose > buyZone.top)                                  return { signal: 'solid-buy',  zone: buyZone };
+    if (curClose >= buyZone.bottom && curClose <= buyZone.top)   return { signal: 'weak-buy',   zone: buyZone };
+  }
+  if (sellZone) {
+    if (curClose < sellZone.bottom)                              return { signal: 'solid-sell', zone: sellZone };
+    if (curClose <= sellZone.top && curClose >= sellZone.bottom) return { signal: 'weak-sell',  zone: sellZone };
+  }
+  return { signal: 'none', zone: null };
+}
+
+const BADGE = {
+  'solid-buy':  { cls: 'badge-solid-buy',  text: 'Solid BO Buy'  },
+  'weak-buy':   { cls: 'badge-weak-buy',   text: 'Weak BO Buy'   },
+  'solid-sell': { cls: 'badge-solid-sell', text: 'Solid BO Sell' },
+  'weak-sell':  { cls: 'badge-weak-sell',  text: 'Weak BO Sell'  },
+  'none':       { cls: 'badge-none',       text: 'No BO'         },
+};
+const BAR = {
+  'solid-buy':  { cls: 'bar-solid-buy',  tag: 'tag-solid-buy',  w: '85%' },
+  'weak-buy':   { cls: 'bar-weak-buy',   tag: 'tag-weak-buy',   w: '55%' },
+  'solid-sell': { cls: 'bar-solid-sell', tag: 'tag-solid-sell', w: '85%' },
+  'weak-sell':  { cls: 'bar-weak-sell',  tag: 'tag-weak-sell',  w: '55%' },
+  'none':       { cls: 'bar-none',       tag: 'tag-none',       w: '30%' },
+};
+
+function fmtCountdown(ms) {
+  if (ms <= 0) return 'refreshing...';
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function fmtPrice(p) {
+  return p ? p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+}
+
+function renderTfGrid() {
+  const now = Date.now();
+  document.getElementById('tf-grid').innerHTML = TFS.map(tf => {
+    const r = results[tf.id];
+    if (!r) return `<div class="tf-card"><div class="tf-label">${tf.label}</div><div class="tf-badge badge-loading">Loading…</div></div>`;
+    const b = BADGE[r.signal];
+    const remaining = (nextRefresh[tf.id] || 0) - now;
+    const zoneHtml = r.zone
+      ? `<div class="tf-zone">Z: ${fmtPrice(r.zone.bottom)} – ${fmtPrice(r.zone.top)}</div>`
+      : `<div class="tf-zone">No nearby zone</div>`;
+    return `<div class="tf-card">
+      <div class="tf-label">${tf.label}</div>
+      <div class="tf-badge ${b.cls}">${b.text}</div>
+      ${zoneHtml}
+      <div class="tf-next">in ${fmtCountdown(remaining)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSummary() {
+  const ready = TFS.filter(tf => results[tf.id]);
+  if (!ready.length) { document.getElementById('summary-section').innerHTML = ''; return; }
+  let html = `<div class="summary-title">Timeframe breakdown</div>`;
+  ready.forEach(tf => {
+    const sig = results[tf.id].signal;
+    const b = BAR[sig];
+    html += `<div class="summary-row">
+      <span class="summary-tf">${tf.label}</span>
+      <div class="summary-bar-wrap"><div class="summary-bar ${b.cls}" style="width:${b.w}"></div></div>
+      <span class="summary-tag ${b.tag}">${BADGE[sig].text}</span>
+    </div>`;
+  });
+  document.getElementById('summary-section').innerHTML = html;
+}
+
+async function fetchTf(tf) {
+  try {
+    const candles = await fetchCandles(tf.interval, tf.limit);
+    results[tf.id] = detectBreakout(candles);
+  } catch(e) {
+    results[tf.id] = { signal: 'none', zone: null };
+  }
+  nextRefresh[tf.id] = Date.now() + tf.refreshMs;
+  renderTfGrid();
+  renderSummary();
+  setTimeout(() => fetchTf(tf), tf.refreshMs);
+}
+
+async function fetchPrice() {
+  try {
+    const t = await fetchTicker();
+    const price  = parseFloat(t.lastPrice);
+    const change = parseFloat(t.priceChangePercent);
+    document.getElementById('current-price').textContent = '$' + fmtPrice(price);
+    const chEl = document.getElementById('price-change');
+    chEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+    chEl.className = 'price-change ' + (change > 0.01 ? 'change-pos' : change < -0.01 ? 'change-neg' : 'change-neu');
+    document.getElementById('day-high').textContent = '$' + fmtPrice(parseFloat(t.highPrice));
+    document.getElementById('day-low').textContent  = '$' + fmtPrice(parseFloat(t.lowPrice));
+    document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+  } catch(e) {}
+  setTimeout(fetchPrice, 60000);
+}
+
+setInterval(renderTfGrid, 1000);
+TFS.forEach(tf => fetchTf(tf));
+fetchPrice();
+</script>
+</body>
+</html>
